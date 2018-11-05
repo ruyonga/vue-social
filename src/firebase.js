@@ -5,12 +5,12 @@ import 'firebase/firestore'
 // firebase init goes here
 const config = {
 
-    apiKey: "AIzaSyBl1wmjQXUNUsiwCc_5EAWAjZUqPA5xCEo",
-    authDomain: "coffee-shop-26952.firebaseapp.com",
-    databaseURL: "https://coffee-shop-26952.firebaseio.com",
-    projectId: "coffee-shop-26952",
-    storageBucket: "coffee-shop-26952.appspot.com",
-    messagingSenderId: "112652457926"
+    apiKey: "",
+    authDomain: "",
+    databaseURL: "",
+    projectId: "",
+    storageBucket: "",
+    messagingSenderId: ""
 }
 
 firebase.initializeApp(config)
