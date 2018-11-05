@@ -1,15 +1,20 @@
 <template>
     <div id="login">
+        <transition name="fade">
+            <div v-if="performingRequest" class="loading">
+                <p>Loading...</p>
+            </div>
+        </transition>
         <section>
             <div class="col1">
                 <h1>Vuegram</h1>
-                <p>Welcome to the <a href="https://savvyapps.com/" target="_blank">Savvy Apps</a> sample social media web app powered by Vue.js and Firebase.
+                <p>Welcome to the <a href="#" target="_blank">Savvy Apps</a> sample social media web app powered by Vue.js and Firebase.
                     Build this project by checking out The Definitive Guide to Getting Started with Vue.js</p>
             </div>
-            <div class="col2">
-                <form @submit.prevent>
+            <div class="col2" :class="{ 'signup-form': !showLoginForm && !showForgotPassword}">
+                <form v-if="showLoginForm"  @submit.prevent>
                     <h1>Welcome Back</h1>
-                    <p>{{ error }}</p>
+            
                     <label for="email1">Email</label>
                     <input v-model.trim="loginForm.email"  type="text" placeholder="you@email.com" id="email1" />
 
@@ -19,10 +24,55 @@
                     <button class="button" @click="login">Log In</button>
 
                     <div class="extras">
-                        <a>Forgot Password</a>
-                        <a>Create an Account</a>
+                        <a @click="togglePasswordReset">Forgot Password</a>
+                        <a @click="toggleForm">Create an Account</a>
                     </div>
                 </form>
+                <form v-if="!showLoginForm && !showForgotPassword" @submit.prevent>
+                    <h1>Get Started</h1>
+
+                    <label for="name">Name</label>
+                    <input v-model.trim="signupForm.name" type="text" placeholder=" Apps" id="name" />
+
+                    <label for="title">Title</label>
+                    <input v-model.trim="signupForm.title" type="text" placeholder="Company" id="title" />
+
+                    <label for="email2">Email</label>
+                    <input v-model.trim="signupForm.email" type="text" placeholder="you@email.com" id="email2" />
+
+                    <label for="password2">Password</label>
+                    <input v-model.trim="signupForm.password" type="password" placeholder="min 6 characters" id="password2" />
+
+                    <button @click="signup" class="button">Sign Up</button>
+
+                    <div class="extras">
+                        <a @click="toggleForm">Back to Log In</a>
+                    </div>
+                </form>
+                <form v-if="showForgotPassword" @submit.prevent class="password-reset">
+                    <div v-if="!passwordResetSuccess">
+                        <h1>Reset Password</h1>
+                        <p>we will send you an email to rest your password</p>
+
+                        <label for="email3">Email </label>
+                        <input type="text" v-model.trim="passwordForm.email" placeholder="me@me.com" id="email2"/>
+
+                        <button class="button" @click="resetPassword">Submit</button>
+                        <div class="extras">
+                            <a @click="togglePasswordReset">Back to Login</a>
+                        </div>
+                    </div>
+                    <div v-else>
+                        <h1>Email sent</h1>
+                        <p>Check your email for a link to rest your password</p>
+                        <button @click="togglePasswordReset" class="button">Back to login</button>
+                    </div>
+                </form>
+            <transition name="fade">
+                <div v-if="errorMsg !== ''" class="error-msg">
+                    <p>{{ errorMsg }}</p>
+                </div>
+            </transition>
             </div>
         </section>
     </div>
@@ -37,22 +87,99 @@ export default {
                 email: '',
                 password: ''
             }, 
-            error: ''
+
+            signupForm:{ 
+                name: '',
+                title: '',
+                email: '',
+                password: ''
+            },
+            passwordForm: {
+                email: ''
+            },
+            errorMsg: '',
+            showLoginForm: true,
+            performingRequest: false,
+            passwordResetSuccess: false,
+            showForgotPassword: false,
+
         }
     },
     methods: {
-        login() {
+        toggleForm(){
+            this.errorMsg = ''
+            this.showLoginForm = !this.showLoginForm
+        },
+        togglePasswordReset(){
+            if (this.showForgotPassword) {
+                    this.showLoginForm = true
+                    this.showForgotPassword = false
+                    this.passwordResetSuccess = false
+                } else {
+                    this.showLoginForm = false
+                    this.showForgotPassword = true
+                }
+
+        },
+        login(){
+            this.performingRequest = true
             fb.auth.signInWithEmailAndPassword(this.loginForm.email, this.loginForm.password)
                 .then(user =>{
-                    this.$store.commit('setCurrentUser', user.user)
+                    console.log(user.user)
+                    this.performingRequest = false
+                    this.$store.commit('SET_CURRENT_USER', user.user)
                     this.$store.dispatch('fetchUserProfile')
-                    this.$store.router.push('/dashboard')
+                    this.$router.push('/dashboard')
                 })
                 .catch(err =>{
-                    this.error = err
+                    this.performingRequest = false
+                    this.errorMsg = err.message
+                    
                     console.log(err)
                 })
-                }
+        },
+
+        signup() {
+            this.performingRequest = true
+            fb.auth.createUserWithEmailAndPassword(this.signupForm.email, this.signupForm.password)
+            .then(user => { 
+                this.performingRequest = false
+                console.log(user.user.uid)
+                this.$store.commit('SET_CURRENT_USER', user.user)
+                fb.usersCollection.doc(user.user.uid).set({
+                    name: this.signupForm.name,
+                    title: this.signupForm.title
+                }).then(() =>{
+                    this.performingRequest = false
+                    this.$store.dispatch('fetchUserProfile')
+                    this.$router.push('/dashboard')
+                }).catch( err => {
+                     this.performingRequest = false
+                    this.errorMsg = err.message
+                    
+                    console.log(err)
+                })
+
+            }).catch(err =>{
+                his.performingRequest = false
+                 this.errorMsg = err.message
+                console.log(err)
+            })
+        },
+  
+    resetPassword(){
+        this.performingRequest = true
+        fb.auth.sendPasswordResetEmail(this.passwordForm.email).then(() =>{
+            this.performingRequest = false
+            this.passwordResetSuccess = true
+            this.passwordForm.email = ''
+        }).catch(err => {
+            console.log(err)
+            this.performingRequest = false
+            this.errorMsg = err.message
+        })
+
+    }
     }
 
 }
